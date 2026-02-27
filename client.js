@@ -171,8 +171,49 @@ function joinRoom(roomId) {
   roomInfoEl.textContent = roomId;
 
   subscribeRoomState(roomId);
+  // marca como conectado em qualquer assento que já era seu
+  setSeatConnectionForCurrentUser(true);
 }
 
+// ==== Presença no assento (conectado / desconectado) ====
+async function setSeatConnectionForCurrentUser(connected) {
+  if (!currentRoomId || !currentUser) return;
+
+  const ref = doc(db, "rooms", currentRoomId, "meta", "state");
+  const snap = await getDoc(ref);
+  if (!snap.exists()) return;
+
+  const data = snap.data();
+  let changed = false;
+
+  const objs = data.tableObjects.map(o => {
+    if (o.type === "seat" && o.occupantUserId === currentUser.uid) {
+      changed = true;
+      return {
+        ...o,
+        occupantConnected: connected
+      };
+    }
+    return o;
+  });
+
+  if (changed) {
+    await updateDoc(ref, { tableObjects: objs });
+  }
+}
+
+// marcar como desconectado ao sair pro lobby
+document.getElementById('btnBackToLobby').onclick = () => {
+  setSeatConnectionForCurrentUser(false);
+  window.location.search = "";
+};
+
+// marcar como desconectado ao fechar a aba
+window.addEventListener("beforeunload", () => {
+  setSeatConnectionForCurrentUser(false);
+});
+
+// ==== Estado da sala ====
 function subscribeRoomState(roomId) {
   if (unsubRoomState) unsubRoomState();
 
@@ -238,12 +279,22 @@ function renderSeats(seats) {
 
     if (seat.occupantUserId) {
       nameLine.textContent = seat.occupantName || "(?)";
+      seatEl.appendChild(nameLine);
+
+      // status de desconectado
+      if (seat.occupantConnected === false) {
+        const statusLine = document.createElement("div");
+        statusLine.textContent = "(desconectado)";
+        statusLine.style.fontStyle = "italic";
+        statusLine.style.color = "#b91c1c";
+        seatEl.appendChild(statusLine);
+      }
 
       if (seat.occupantUserId === currentUser.uid) {
         const leave = document.createElement("span");
         leave.textContent = "Sair";
         leave.style.cursor = "pointer";
-        leave.onclick = () => updateSeat(seat.id, { occupantUserId: null });
+        leave.onclick = () => clearSeat(seat.id);
         actionsLine.appendChild(leave);
       }
 
@@ -252,29 +303,82 @@ function renderSeats(seats) {
         free.textContent = "Liberar";
         free.style.cursor = "pointer";
         free.style.color = "red";
-        free.onclick = () => updateSeat(seat.id, { occupantUserId: null });
+        free.onclick = () => clearSeat(seat.id);
         actionsLine.appendChild(free);
       }
     } else {
       nameLine.textContent = seat.baseLabel;
+      seatEl.appendChild(nameLine);
 
       const take = document.createElement("span");
       take.textContent = "Pegar";
       take.style.cursor = "pointer";
       take.style.color = "green";
-      take.onclick = () => updateSeat(seat.id, {
-        occupantUserId: currentUser.uid,
-        occupantName: currentUser.displayName || "?"
-      });
+      take.onclick = () => takeSeat(seat.id);
 
       actionsLine.appendChild(take);
     }
 
-    seatEl.appendChild(nameLine);
     seatEl.appendChild(actionsLine);
-
     seatsBarEl.appendChild(seatEl);
   }
+}
+
+// jogador pega um assento (regra: 1 assento por jogador)
+async function takeSeat(seatId) {
+  if (!currentRoomId || !currentUser) return;
+
+  const ref = doc(db, "rooms", currentRoomId, "meta", "state");
+  const snap = await getDoc(ref);
+  if (!snap.exists()) return;
+
+  const data = snap.data();
+  const objs = [...data.tableObjects];
+
+  // já está em outro assento?
+  const existingSeat = objs.find(
+    o => o.type === "seat" && o.occupantUserId === currentUser.uid
+  );
+  if (existingSeat && existingSeat.id !== seatId) {
+    alert("Você já está em um assento nesta sala.");
+    return;
+  }
+
+  const seat = objs.find(o => o.type === "seat" && o.id === seatId);
+  if (!seat) return;
+
+  // se já houver outra pessoa no assento, não faz nada
+  if (seat.occupantUserId && seat.occupantUserId !== currentUser.uid) return;
+
+  seat.occupantUserId = currentUser.uid;
+  seat.occupantName = currentUser.displayName || "?";
+  seat.occupantConnected = true;
+
+  await updateDoc(ref, { tableObjects: objs });
+}
+
+// limpar assento (sair / liberar) — aqui depois vamos lidar com "mão" e área temporária
+async function clearSeat(seatId) {
+  if (!currentRoomId) return;
+
+  const ref = doc(db, "rooms", currentRoomId, "meta", "state");
+  const snap = await getDoc(ref);
+  if (!snap.exists()) return;
+
+  const data = snap.data();
+  const objs = data.tableObjects.map(o => {
+    if (o.type === "seat" && o.id === seatId) {
+      return {
+        ...o,
+        occupantUserId: null,
+        occupantName: null,
+        occupantConnected: false
+      };
+    }
+    return o;
+  });
+
+  await updateDoc(ref, { tableObjects: objs });
 }
 
 function renderCards(cards) {
@@ -340,21 +444,6 @@ playInnerEl.addEventListener("mouseup", () => {
 });
 
 // ==== Firestore updates ====
-async function updateSeat(id, updates) {
-  if (!currentRoomId) return;
-  const ref = doc(db, "rooms", currentRoomId, "meta", "state");
-
-  const snap = await getDoc(ref);
-  if (!snap.exists()) return;
-
-  const data = snap.data();
-  const objs = data.tableObjects.map(o =>
-    o.id === id ? { ...o, ...updates } : o
-  );
-
-  await updateDoc(ref, { tableObjects: objs });
-}
-
 async function updateObject(id, updates) {
   if (!currentRoomId) return;
   const ref = doc(db, "rooms", currentRoomId, "meta", "state");
@@ -386,7 +475,8 @@ btnAddSeatEl.onclick = async () => {
     type: "seat",
     baseLabel: "Jogador " + seatNum,
     occupantUserId: null,
-    occupantName: null
+    occupantName: null,
+    occupantConnected: false
   };
 
   await updateDoc(ref, {
@@ -407,10 +497,6 @@ btnRemoveSeatEl.onclick = async () => {
 
   objs.splice(idx, 1);
   await updateDoc(ref, { tableObjects: objs });
-};
-
-document.getElementById('btnBackToLobby').onclick = () => {
-  window.location.search = "";
 };
 
 btnToggleEditEl.onclick = () => {
