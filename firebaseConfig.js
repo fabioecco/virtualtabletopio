@@ -6,4 +6,4 @@ export const firebaseConfig = {
   storageBucket: "virtualtabletopio.firebasestorage.app",
   messagingSenderId: "26907637871",
   appId: "1:26907637871:web:2fdba2873a45b9a93cf59a"
-}
+};
