@@ -4,120 +4,29 @@
   <meta charset="utf-8" />
   <title>Virtual Tabletop – MVP (Firebase)</title>
   <style>
-    /* (todo o seu CSS foi mantido igual) */
-    html, body {
-      margin: 0;
-      padding: 0;
-      height: 100%;
-      font-family: sans-serif;
-    }
-    #app {
-      height: 100%;
-      display: flex;
-      flex-direction: column;
-    }
-    #lobby, #tableView {
-      flex: 1;
-      display: none;
-    }
-    #lobby {
-      padding: 16px;
-    }
-    #tableView {
-      display: none;
-      flex-direction: column;
-      height: 100%;
-    }
-    #roomHeader {
-      padding: 8px 12px;
-      border-bottom: 1px solid #ccc;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      justify-content: space-between;
-    }
-    #roomMain {
-      flex: 1;
-      display: flex;
-      min-height: 0;
-    }
-    #sidebar {
-      width: 260px;
-      background: #1f2933;
-      color: #f9fafb;
-      display: none;
-      flex-direction: column;
-      padding: 8px;
-      font-size: 13px;
-    }
-    #gameArea {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      min-width: 0;
-    }
-    #seatsBar {
-      height: 70px;
-      background: #f3f4f6;
-      display: flex;
-      align-items: center;
-      padding: 4px 8px;
-      gap: 8px;
-    }
-    #playArea {
-      position: relative;
-      flex: 1;
-      background: #e5e7eb;
-      overflow: hidden;
-    }
-    #playInner {
-      position: relative;
-      width: 100%;
-      height: 100%;
-    }
-    #editOverlay {
-      position: absolute;
-      inset: 0;
-      background: rgba(0,0,0,0.25);
-      pointer-events: none;
-      display: none;
-    }
-    #handBar {
-      height: 80px;
-      background: #e5e7eb;
-      border-top: 1px solid #ccc;
-      display: flex;
-      align-items: center;
-      padding: 4px 8px;
-      gap: 8px;
-      font-size: 13px;
-    }
-    .seat-card {
-      min-width: 120px;
-      padding: 4px 6px;
-      border-radius: 6px;
-      border: 1px solid #4b5563;
-      background: #e0f2fe;
-      display: flex;
-      flex-direction: column;
-      font-size: 11px;
-    }
+    html, body { margin: 0; padding: 0; height: 100%; font-family: sans-serif; }
+    #app { height: 100%; display: flex; flex-direction: column; }
+    #lobby, #tableView { flex: 1; display: none; }
+    #lobby { padding: 16px; }
+    #tableView { display: none; flex-direction: column; height: 100%; }
+    #roomHeader { padding: 8px 12px; border-bottom: 1px solid #ccc; display: flex; align-items: center; gap: 8px; justify-content: space-between; }
+    #roomMain { flex: 1; display: flex; min-height: 0; }
+    #sidebar { width: 260px; background: #1f2933; color: #f9fafb; display: none; flex-direction: column; padding: 8px; font-size: 13px; }
+    #gameArea { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+    #seatsBar { height: 70px; background: #f3f4f6; display: flex; align-items: center; padding: 4px 8px; gap: 8px; }
+    #playArea { position: relative; flex: 1; background: #e5e7eb; overflow: hidden; }
+    #playInner { position: relative; width: 100%; height: 100%; }
+    #editOverlay { position: absolute; inset: 0; background: rgba(0,0,0,0.25); pointer-events: none; display: none; }
+    #handBar { height: 80px; background: #e5e7eb; border-top: 1px solid #ccc; display: flex; align-items: center; padding: 4px 8px; gap: 8px; font-size: 13px; }
+    .seat-card { min-width: 120px; padding: 4px 6px; border-radius: 6px; border: 1px solid #4b5563; background: #e0f2fe; display: flex; flex-direction: column; font-size: 11px; }
     button { cursor: pointer; }
-    #log {
-      font-size: 11px;
-      padding: 4px 8px;
-      border-top: 1px solid #eee;
-      background: #fafafa;
-      height: 60px;
-      overflow: auto;
-    }
+    #log { font-size: 11px; padding: 4px 8px; border-top: 1px solid #eee; background: #fafafa; height: 60px; overflow: auto; }
   </style>
 </head>
 <body>
 
 <div id="app">
 
-  <!-- LOBBY -->
   <div id="lobby">
     <h1>Virtual Tabletop – Lobby</h1>
 
@@ -143,7 +52,6 @@
     </section>
   </div>
 
-  <!-- SALA -->
   <div id="tableView">
     <div id="roomHeader">
       <div id="roomHeaderLeft">
@@ -162,16 +70,8 @@
     <div id="roomMain">
       <div id="sidebar">
         <h3>Modo edição</h3>
-
-        <section>
-          <strong>Componentes</strong>
-          <p>(futuro)</p>
-        </section>
-
-        <section>
-          <strong>Propriedades</strong>
-          <p>(futuro)</p>
-        </section>
+        <section><strong>Componentes</strong><p>(futuro)</p></section>
+        <section><strong>Propriedades</strong><p>(futuro)</p></section>
       </div>
 
       <div id="gameArea">
@@ -193,15 +93,27 @@
   </div>
 </div>
 
-<!-- Firebase -->
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js";
-  import { 
-    getAuth, signInAnonymously, updateProfile, onAuthStateChanged
+  import {
+    getAuth,
+    signInAnonymously,
+    updateProfile,
+    onAuthStateChanged
   } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-auth.js";
   import {
-    getFirestore, doc, collection, addDoc, setDoc, updateDoc,
-    onSnapshot, serverTimestamp, query, where, getDocs
+    getFirestore,
+    doc,
+    collection,
+    addDoc,
+    setDoc,
+    updateDoc,
+    getDoc,
+    onSnapshot,
+    serverTimestamp,
+    query,
+    where,
+    getDocs
   } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
 
   import { firebaseConfig } from "./firebaseConfig.js";
@@ -210,11 +122,18 @@
   const auth = getAuth(app);
   const db = getFirestore(app);
 
-  window._firebase = { auth, db, fs: {
-    doc, collection, addDoc, setDoc, updateDoc,
-    onSnapshot, serverTimestamp, query, where, getDocs
-  }};
-  
+  window._firebase = {
+    auth,
+    db,
+    fs: {
+      doc, collection, addDoc, setDoc, updateDoc,
+      getDoc, onSnapshot, serverTimestamp, query, where, getDocs
+    },
+    signInAnonymously,
+    updateProfile,
+    onAuthStateChanged
+  };
+
   import("./client.js");
 </script>
 
