@@ -3,9 +3,7 @@ const {
   auth,
   db,
   fs,
-  onAuthStateChanged,
-  signInAnonymously,
-  updateProfile
+  onAuthStateChanged
 } = window._firebase;
 
 const {
@@ -80,12 +78,15 @@ function log(msg) {
 // ==== Auth ====
 onAuthStateChanged(auth, async (user) => {
   if (!user) {
+    const { signInAnonymously } = await import("https://www.gstatic.com/firebasejs/11.0.0/firebase-auth.js");
     await signInAnonymously(auth);
     return;
   }
 
   currentUser = user;
-  identityInfoEl.textContent = `UID: ${user.uid}`;
+
+  identityInfoEl.textContent =
+    `Nome: ${user.displayName || "(sem nome)"} (UID: ${user.uid})`;
 
   if (user.displayName) playerNameInput.value = user.displayName;
 
@@ -99,7 +100,11 @@ btnSaveName.onclick = async () => {
   const name = playerNameInput.value.trim();
   if (!name) return;
 
+  const { updateProfile } = await import("https://www.gstatic.com/firebasejs/11.0.0/firebase-auth.js");
   await updateProfile(currentUser, { displayName: name });
+
+  identityInfoEl.textContent =
+    `Nome: ${currentUser.displayName} (UID: ${currentUser.uid})`;
 };
 
 // ==== Rooms list ====
@@ -114,12 +119,12 @@ function subscribeRooms() {
       if (data.ownerId !== currentUser.uid) return;
 
       const li = document.createElement("li");
-
       const link = document.createElement("a");
+
       link.href = "?room=" + docSnap.id;
       link.textContent = data.name;
-      li.appendChild(link);
 
+      li.appendChild(link);
       roomListEl.appendChild(li);
     });
   });
@@ -191,16 +196,16 @@ function subscribeRoomState(roomId) {
 function updateEditingUI() {
   if (isRoomOwner) {
     btnToggleEditEl.style.display = 'inline-block';
-    btnAddSeatEl.style.display = 'inline-block';
-    btnRemoveSeatEl.style.display = 'inline-block';
+    btnAddSeatEl.style.display   = 'inline-block';
+    btnRemoveSeatEl.style.display= 'inline-block';
   } else {
     btnToggleEditEl.style.display = 'none';
-    btnAddSeatEl.style.display = 'none';
-    btnRemoveSeatEl.style.display = 'none';
+    btnAddSeatEl.style.display   = 'none';
+    btnRemoveSeatEl.style.display= 'none';
   }
 
   editOverlayEl.style.display = (isRoomOwner && localEditingMode) ? 'block' : 'none';
-  sidebarEl.style.display = (isRoomOwner && localEditingMode) ? 'flex' : 'none';
+  sidebarEl.style.display     = (isRoomOwner && localEditingMode) ? 'flex' : 'none';
 }
 
 // ==== Render sala ====
@@ -277,9 +282,9 @@ function renderCards(cards) {
     const el = document.createElement("div");
     el.style.position = "absolute";
     el.style.left = card.x + "px";
-    el.style.top = card.y + "px";
+    el.style.top  = card.y + "px";
     el.style.width = card.width + "px";
-    el.style.height = card.height + "px";
+    el.style.height= card.height + "px";
     el.style.border = "2px solid #222";
     el.style.borderRadius = "6px";
     el.style.display = "flex";
@@ -296,7 +301,7 @@ function renderCards(cards) {
       draggingCard = card;
       const rect = playInnerEl.getBoundingClientRect();
       dragOffsetX = e.clientX - rect.left - card.x;
-      dragOffsetY = e.clientY - rect.top - card.y;
+      dragOffsetY = e.clientY - rect.top  - card.y;
     };
 
     el.ondblclick = () => updateObject(card.id, { faceUp: !card.faceUp });
@@ -320,7 +325,7 @@ playInnerEl.addEventListener("mousemove", (e) => {
   const rect = playInnerEl.getBoundingClientRect();
 
   draggingCard.x = e.clientX - rect.left - dragOffsetX;
-  draggingCard.y = e.clientY - rect.top - dragOffsetY;
+  draggingCard.y = e.clientY - rect.top  - dragOffsetY;
 
   renderRoom();
 });
@@ -413,7 +418,6 @@ btnToggleEditEl.onclick = () => {
   updateEditingUI();
 };
 
-// Simple reset
 btnResetEl.onclick = async () => {
   if (!currentRoomId) return;
   const ref = doc(db, "rooms", currentRoomId, "meta", "state");
